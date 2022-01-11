@@ -4,7 +4,7 @@ hass-jetson-person-detection
 # Python script for person detection for Nvidia's Jetson boards
 
 ## Features:
-* Detects persons on a video stream
+* Detects persons in a video stream
 * Publishes ffmpeg rtsp stream with detections (RTSP server needed -- check rtsp-simple-server)
 * Creates Home Assistant occupancy sensor with mqtt based on detection
 
