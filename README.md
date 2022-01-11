@@ -5,8 +5,8 @@ hass-jetson-person-detection
 
 ## Features:
 * Detects persons on a video stream
-* Publishes ffmpeg rtsp stream (RTSP server needed -- check rtsp-simple-server)
-* Creates Home Assistant occupancy sensor with mqtt
+* Publishes ffmpeg rtsp stream with detections (RTSP server needed -- check rtsp-simple-server)
+* Creates Home Assistant occupancy sensor with mqtt based on detection
 
 ## Usage:
 
