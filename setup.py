@@ -9,7 +9,7 @@ setup(name='hass-jetson-person-detector',
       license='MIT',
       packages=['hass-jetson-person-detector'],
       install_requires=[
-          'ffmpeg',
+          'ffmpeg-python',
           'numpy',
           'pillow',
           'paho-mqtt'

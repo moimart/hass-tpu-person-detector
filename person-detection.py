@@ -12,19 +12,21 @@ class PresenceManager:
     def on_connect(self, client, userdata, flags, rc):
         print("Connected with result code " + str(rc))
 
-        self.client.publish("kikkei/occupancy/jetson","ON")
-        self.client.publish(config["mqtt_topic"], json.dumps(config["mqtt_payload"]), retain=True)
+        self.client.publish("kikkei/occupancy/jetson", "ON")
+        self.client.publish(config["mqtt_topic"], json.dumps(
+            config["mqtt_payload"]), retain=True)
 
     def on_message(self, client, userdata, msg):
         print(msg)
-        
+
     def publish_binary_sensor_status(self, status):
         self.client.publish("kikkei/occupancy/status", status)
 
     def __init__(self):
         self.client = mqtt.Client()
 
-        self.client.username_pw_set(config["hass_username"], password=config["hass_pwd"])
+        self.client.username_pw_set(
+            config["hass_username"], password=config["hass_pwd"])
 
         self.client.on_connect = self.on_connect
         self.client.on_message = self.on_message
@@ -35,13 +37,7 @@ class PresenceManager:
 
 
 class VideoDetector:
-    def __init__(self):
-        self.pm = PresenceManager()
-        self.net = jetson.inference.detectNet(config["model"], threshold=config["threshold"])
-        self.input = jetson.utils.videoSource(config["source"])
-        self.width = 640
-        self.height = 480
-
+    def create_process(self):
         self.ffmpeg_process = (
             ffmpeg.input(
                 "pipe:",
@@ -50,11 +46,19 @@ class VideoDetector:
                 r=15,
                 s="{}x{}".format(self.width, self.height),
             )
-            # .output("yeah.mp4", pix_fmt='yuv420p')
-            .output(config["output"], f="rtsp", pix_fmt="yuv420p", r=15)
+            .output(config["output"], vcodec="h264_nvmpi", f="rtsp", pix_fmt="yuv420p", r=15)
             .overwrite_output()
             .run_async(pipe_stdin=True)
         )
+
+    def __init__(self):
+        self.pm = PresenceManager()
+        self.net = jetson.inference.detectNet(
+            config["model"], threshold=config["threshold"])
+        self.input = jetson.utils.videoSource(config["source"])
+        self.width = 640
+        self.height = 480
+        self.create_process()
 
     def start(self):
         try:
@@ -65,23 +69,10 @@ class VideoDetector:
 
             self.ffmpeg_process.stdin.close()
             self.ffmpeg_process.wait()
-
-            self.ffmpeg_process = (
-            ffmpeg.input(
-                "pipe:",
-                format="rawvideo",
-                pix_fmt="rgb24",
-                r=15,
-                s="{}x{}".format(self.width, self.height),
-            )
-            # .output("yeah.mp4", pix_fmt='yuv420p')
-            .output(config["output"], f="rtsp", pix_fmt="yuv420p", r=15)
-            .overwrite_output()
-            .run_async(pipe_stdin=True)
-        )
+            self.create_process()
 
     def loop(self):
-        prev_detection = False #avoid spamming mqtt server
+        prev_detection = False  # avoid spamming mqtt server
         while True:
             img = self.input.Capture()
             detections = self.net.Detect(img, overlay="box,labels,conf")
@@ -101,10 +92,10 @@ class VideoDetector:
             self.height = img.height
 
             image_array = jetson.utils.cudaToNumpy(img)
+ 
             array_frame = Image.fromarray(image_array, "RGB")
-
             buffer = array_frame.tobytes()
-
+ 
             self.ffmpeg_process.stdin.write(buffer)
             self.pm.loop()
 
@@ -117,4 +108,4 @@ class VideoDetector:
 
 if __name__ == "__main__":
     vd = VideoDetector()
-    vd.start()
+    vd.loop()
