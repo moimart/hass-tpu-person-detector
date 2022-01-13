@@ -4,53 +4,25 @@ import numpy as np
 import jetson.inference
 import jetson.utils
 from PIL import Image
-import paho.mqtt.client as mqtt
-import json
 from config import config
 from time import gmtime, strftime
-
-
-class PresenceManager:
-    def on_connect(self, client, userdata, flags, rc):
-        print("Connected with result code " + str(rc))
-
-        self.client.publish("kikkei/occupancy/jetson", "ON")
-        self.client.publish(config["mqtt_topic"], json.dumps(
-            config["mqtt_payload"]), retain=True)
-
-    def on_message(self, client, userdata, msg):
-        print(msg)
-
-    def publish_persons_detected(self, persons):
-        self.client.publish("kikkei/occupancy/number", persons)
-
-    def publish_binary_sensor_status(self, status):
-        self.client.publish("kikkei/occupancy/status", status)
-
-    def __init__(self):
-        self.client = mqtt.Client()
-
-        self.client.username_pw_set(
-            config["hass_username"], password=config["hass_pwd"])
-
-        self.client.on_connect = self.on_connect
-        self.client.on_message = self.on_message
-        self.client.connect(config["mqtt_host"], config["mqtt_port"], 60)
-
-    def loop(self):
-        self.client.loop()
-
+from presence_manager import PresenceManager
 
 class VideoDetector:
     def create_process(self):
-        self.ffmpeg_process = (
+        if config["output"] == "":
+            return
+
+        f = "rtsp" if config["output"][0:4] == "rtsp" else "mp4"
+
+        self.ffmpeg_encoder = (
             ffmpeg.input(
                 "pipe:",
                 format="rawvideo",
                 pix_fmt="rgb24",
                 s="{}x{}".format(self.width, self.height),
             )
-            .output(config["output"], vcodec="h264_nvmpi", preset="ultrafast", f="rtsp", pix_fmt="yuv420p", r=15)
+            .output(config["output"], vcodec="h264_nvmpi", preset="ultrafast", f=f, pix_fmt="yuv420p", r=15)
             .overwrite_output()
             .run_async(pipe_stdin=True)
         )
@@ -62,7 +34,7 @@ class VideoDetector:
         self.input = jetson.utils.videoSource(config["source"])
         self.width = 320
         self.height = 240
-        self.ffmpeg_process = None
+        self.ffmpeg_encoder = None
         self.video_record = True
         self.snap_save = True
 
@@ -73,12 +45,12 @@ class VideoDetector:
             print("\n\n\n\nRestarting.... Exception {}\n\n\n\n".format(e))
             self.input = jetson.utils.videoSource(config["source"])
 
-            self.ffmpeg_process.stdin.close()
-            self.ffmpeg_process.wait()
+            self.ffmpeg_encoder.stdin.close()
+            self.ffmpeg_encoder.wait()
             self.create_process()
 
-    def process_frame(self, img):
-        if self.ffmpeg_process is None:
+    def process_frame(self, img, person_detected):        
+        if self.ffmpeg_encoder is None and config["output"] != "":
             self.width, self.height = img.width, img.height
             self.create_process()
 
@@ -87,20 +59,22 @@ class VideoDetector:
         array_frame = Image.fromarray(image_array, "RGB")
         buffer = array_frame.tobytes()
 
-        self.ffmpeg_process.stdin.write(buffer)
+        if config["output"] != "":
+            self.ffmpeg_encoder.stdin.write(buffer)
 
-        if self.snap_save:
-            array_frame.save("{}".format(strftime("%Y%M%d-%H%M%S", gmtime())),"PNG")
+        if self.snap_save and person_detected:
+            array_frame.save("{}".format(
+                strftime("%Y%M%d-%H%M%S", gmtime())), "PNG")
 
-    def record_video(self, img, no_person_detected, video_started):
+    def record_video(self, img, person_detected, video_started):
         if self.video_record:
-            if not no_person_detected and not video_started:
+            if person_detected and not video_started:
                 self.output = jetson.utils.videoOutput(
                     "{}.mp4".format(strftime("%Y%M%d-%H%M%S", gmtime())))
                 self.output.Render(img)
-            elif no_person_detected and video_started:
+            elif not person_detected and video_started:
                 self.output.Close()
-            elif not no_person_detected and video_started:
+            elif person_detected and video_started:
                 self.output.Render(img)
 
     def loop(self):
@@ -110,35 +84,35 @@ class VideoDetector:
             try:
                 img = self.input.Capture()
             except Exception as e:
-                raise RuntimeError from e 
+                raise RuntimeError from e
 
             detections = self.net.Detect(img, overlay="box,labels,conf")
 
             persons_detected = 0
-            no_person_detected = True
+            person_detected = False
             for detection in detections:
                 if self.net.GetClassDesc(detection.ClassID) == "person":
                     self.pm.publish_binary_sensor_status("on")
-                    no_person_detected = False
+                    person_detected = True
                     prev_detection = True
                     persons_detected += 1
 
             self.pm.publish_persons_detected(persons_detected)
 
-            if no_person_detected and prev_detection:
+            if not person_detected and prev_detection:
                 self.pm.publish_binary_sensor_status("off")
                 prev_detection = False
 
-            self.record_video(img, no_person_detected, video_started)
-            self.process_frame(img)
+            self.record_video(img, person_detected, video_started)
+            self.process_frame(img, person_detected)
 
             self.pm.loop()
 
             if not self.input.IsStreaming():
                 break
 
-        self.ffmpeg_process.stdin.close()
-        self.ffmpeg_process.wait()
+        self.ffmpeg_encoder.stdin.close()
+        self.ffmpeg_encoder.wait()
 
 
 if __name__ == "__main__":
