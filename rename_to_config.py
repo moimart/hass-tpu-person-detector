@@ -15,8 +15,14 @@ config = {
     "threshold": 0.5,
     "source":  "rtsp://1.2.3.4",
     "sources": [
-        "rtsp://1.2.3.4",
-        "rtsp://1.2.3.5"
+        {
+            "name": "Garage",
+            "url" : "rtsp://1.2.3.4"
+        },
+        {
+            "name": "Entrance",
+            "url": "rtsp://1.2.4.5."
+        }
     ],
     "output": "",  # "rtsp://localhost:8554/mystream",
     "hass_username": "homeassistant",
@@ -47,12 +53,25 @@ config = {
         "payload_not_available": "OFF",
         "device": device
     },
-    "mqtt_topic_last_person_camera": "homeassistant/camera/kikkei/jetson_last_person_camera/config",
+    "mqtt_topic_last_person_camera": "homeassistant/camera/kikkei/jetson_camera_last_person/config",
+    "mqtt_topic_last_person_cameras": "homeassistant/camera/kikkei/jetson_camera_",
     "mqtt_payload_sensor_last_person_camera": {
         "availability_topic": "kikkei/occupancy/jetson",
-        "topic": "kikkei/occupancy/sensor/last_person_camera",
+        "topic": "kikkei/occupancy/sensor/camera_",
         "name": "Last person snapshot",
         "unique_id": "garden_persons_camera",
+        "payload_available": "ON",
+        "payload_not_available": "OFF",
+        "device": device
+    },
+    "mqtt_topic_cameras_active": "homeassistant/sensor/kikkei/cameras_active/config",
+    "mqtt_payload_cameras_active": {
+        "availability_topic": "kikkei/occupancy/jetson",
+        "state_topic": "kikkei/occupancy/sensor/cameras_active",
+        "name": "Cameras Active",
+        "unique_id": "garden_presence_cameras_active",
+        "payload_on": "on",
+        "payload_off": "off",
         "payload_available": "ON",
         "payload_not_available": "OFF",
         "device": device

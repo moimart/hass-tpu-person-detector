@@ -12,47 +12,39 @@ import io
 
 class MultiVideoDetector:
 
-    def __init__(self):
-        self.pm = PresenceManager()
-        self.net = jetson.inference.detectNet(
-            config["model"], threshold=config["threshold"])
+    def __init__(self):   
         self.video_record = False
         self.snap_save = True
 
         self.sources = []
         for i in config["sources"]:
             source = {
-                "input" : jetson.utils.videoSource(i),
-                "name" : i,
+                "input" : jetson.utils.videoSource(i["url"]),
+                "name" : i["name"],
                 "active" : True
             }
             self.sources.append(source)
 
-    def start(self):
-        try:
-            self.loop()
-        except Exception as e:
-            print("\n\n\n\nRestarting.... Exception {}\n\n\n\n".format(e))
-            self.input = jetson.utils.videoSource(config["source"])
+        self.pm = PresenceManager()
+        self.pm.detector = self
 
-            self.ffmpeg_encoder.stdin.close()
-            self.ffmpeg_encoder.wait()
+        self.net = jetson.inference.detectNet(
+            config["model"], threshold=config["threshold"])
 
-    def process_frame(self, img, person_detected):
+    def process_frame(self, name, img, person_detected):
         
         image_array = jetson.utils.cudaToNumpy(img)
-
         array_frame = Image.fromarray(image_array, "RGB")
-        buffer = array_frame.tobytes()
 
         if person_detected:
             with io.BytesIO() as output:
                 array_frame.save(output, format="PNG")
                 self.pm.publish_last_person_camera(output.getvalue())
+                self.pm.update_camera(name,output.getvalue())
 
             if self.snap_save:
-                array_frame.save("captures/{}".format(
-                    strftime("%Y%M%d-%H%M%S.png", gmtime())), "PNG")
+                array_frame.save("captures/{}-{}.png".format(
+                    strftime("%Y%M%d-%H%M%S", gmtime()),name), "PNG")
 
     def record_video(self, img, person_detected, video_started):
         if self.video_record:
@@ -77,27 +69,37 @@ class MultiVideoDetector:
                 continue
 
             persons_detected = 0
-            person_detected = False
 
+            cameras_active = False
             for source in self.sources:
+                cameras_active = cameras_active or source["active"]
                 if not source["active"]:
                     continue 
-                img = source["input"].Capture()
+
+                try:
+                    img = source["input"].Capture()
+                except Exception as e:
+                    print("Source failed!!!")
+                    source["active"] = False
+                    continue
+                
                 detections = self.net.Detect(img, overlay="box,labels,conf")
                 for detection in detections:
                     if self.net.GetClassDesc(detection.ClassID) == "person":
-                        person_detected = True
-                        prev_detection = True
                         persons_detected += 1
 
-                self.process_frame(source.name, img, person_detected)
+                self.process_frame(source["name"], img, persons_detected > 0)
 
-                if not source["input"].isStreaming():
+                if not source["input"].IsStreaming():
                     source["active"] = False
 
-            self.pm.publish_binary_sensor_status("on" if person_detected else "off")
+            self.pm.publish_binary_sensor_status("on" if persons_detected > 0 else "off")
             self.pm.publish_persons_detected(persons_detected)
+            self.pm.cameras_active(cameras_active)
             
+            if not cameras_active:
+                print("\n\nCAMERAS ARE NOT ACTIVE!!!\n\n")
+
             self.pm.loop()
 
 if __name__ == "__main__":
