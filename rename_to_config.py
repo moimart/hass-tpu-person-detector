@@ -28,5 +28,22 @@ config = {
             "model": "Kikkei-Jetson-0",
             "manufacturer": "Kikkei Labs",
         }
+    },
+    "mqtt_topic_2": "homeassistant/binary_sensor/kikkei/jetson_persons/config",
+    "mqtt_payload_sensor_persons" : {
+        "availability_topic": "kikkei/occupancy/jetson",
+        "state_topic": "kikkei/occupancy/sensor/persons",
+        "name": "Garage Presence Detection",
+        "unique_id": "garden_persons",
+        "payload_on": "on",
+        "payload_off": "off",
+        "payload_available": "ON",
+        "payload_not_available": "OFF",
+        "device": {
+            "identifiers": ["Kikkei Labs Jetson Presence Detector"],
+            "name": "Kikkei Jetson Presence",
+            "model": "Kikkei-Jetson-0",
+            "manufacturer": "Kikkei Labs",
+        }
     }
 }
