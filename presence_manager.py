@@ -41,6 +41,8 @@ class PresenceManager:
         self.client.publish(camera_topic, json.dumps(
             camera), retain=True)
 
+        self.client.publish("kikkei/occupancy/jetson", "ON")
+
         self.cameras.append(camera)
 
     def update_camera(self, camera_name, snap):
