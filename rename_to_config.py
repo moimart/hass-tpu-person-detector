@@ -1,49 +1,60 @@
 import os
 #from dotenv import load_dotenv
-#load_dotenv()
+# load_dotenv()
+
+device = {
+    "identifiers": ["Kikkei Labs Person Detector"],
+    "name": "Kikkei's Person Detector",
+    "model": "Kikkei-detector-0",
+    "manufacturer": "Kikkei Labs",
+}
 
 config = {
+    "codec": "h264_nvmpi",
     "model": "ssd-mobilenet-v2",
     "threshold": 0.5,
-    "source": "rtsp://1.2.3.4:8554/mystream",
-    "output": "rtsp://localhost:8554/mystream",
+    "source":  "rtsp://1.2.3.4",
+    "sources": [
+        "rtsp://1.2.3.4",
+        "rtsp://1.2.3.5"
+    ],
+    "output": "",  # "rtsp://localhost:8554/mystream",
     "hass_username": "homeassistant",
-    "hass_pwd": "******",
-    "mqtt_host": os.environ.get("MQTT_HOST"),
-    "mqtt_port" : os.environ.get("MQTT_PORT"),
+    "hass_pwd": "",
+    "mqtt_host": "1.2.3.6",
+    "mqtt_port": 1883,
     "mqtt_topic": "homeassistant/binary_sensor/kikkei/jetson_presence/config",
     "mqtt_payload": {
         "availability_topic": "kikkei/occupancy/jetson",
-        "state_topic": "kikkei/occupancy/status",
-        "name": "Garage Presence Detection",
+        "state_topic": "kikkei/occupancy/sensor/status",
+        "name": "Persons detector",
         "unique_id": "garden_presence",
         "device_class": "occupancy",
         "payload_on": "on",
         "payload_off": "off",
         "payload_available": "ON",
         "payload_not_available": "OFF",
-        "device": {
-            "identifiers": ["Kikkei Labs Jetson Presence Detector"],
-            "name": "Kikkei Jetson Presence",
-            "model": "Kikkei-Jetson-0",
-            "manufacturer": "Kikkei Labs",
-        }
+        "device": device
     },
-    "mqtt_topic_2": "homeassistant/binary_sensor/kikkei/jetson_persons/config",
-    "mqtt_payload_sensor_persons" : {
+    "mqtt_topic_persons": "homeassistant/sensor/kikkei/jetson_persons/config",
+    "mqtt_payload_sensor_persons": {
         "availability_topic": "kikkei/occupancy/jetson",
         "state_topic": "kikkei/occupancy/sensor/persons",
-        "name": "Garage Presence Detection",
+        "name": "Number of Persons",
         "unique_id": "garden_persons",
-        "payload_on": "on",
-        "payload_off": "off",
+        "unit_of_measurement": "person",
         "payload_available": "ON",
         "payload_not_available": "OFF",
-        "device": {
-            "identifiers": ["Kikkei Labs Jetson Presence Detector"],
-            "name": "Kikkei Jetson Presence",
-            "model": "Kikkei-Jetson-0",
-            "manufacturer": "Kikkei Labs",
-        }
+        "device": device
+    },
+    "mqtt_topic_last_person_camera": "homeassistant/camera/kikkei/jetson_last_person_camera/config",
+    "mqtt_payload_sensor_last_person_camera": {
+        "availability_topic": "kikkei/occupancy/jetson",
+        "topic": "kikkei/occupancy/sensor/last_person_camera",
+        "name": "Last person snapshot",
+        "unique_id": "garden_persons_camera",
+        "payload_available": "ON",
+        "payload_not_available": "OFF",
+        "device": device
     }
 }
