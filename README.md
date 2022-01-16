@@ -10,17 +10,22 @@ hass-jetson-person-detection
 
 ## Usage:
 
-1. Install dependencies
-```
-$ python3 setup.py
-```
+1. Install dependencies specified in setup.py -- setup.py does not work:
 
+'ffmpeg-python', 'numpy','pillow', 'paho-mqtt'
+```
+$ pip3 install ffmpeg-python numpy pillow paho-mqtt
+```
 2. Setup an rtsp server such as rtsp-simple-server from https://github.com/aler9/rtsp-simple-server
 3. Rename rename_to_config.py to config.py
 4. Edit the config.py to adjust it to your setup
 5. Make sure to have a MQTT broker installed with Home Assistant (i.e. Mosquito MQTT Broker)
-6. Run the script
+6. Run the script(s)
 ```
-$ python3 person-detection.py
+$ python3 person_detection.py # for a single camera with rtsp re-stream if output is defined
+```
+or
+```
+$ python3 multicamera_detection.py # for multiple cameras (setting sources in config) without rtsp re-stream
 ```
 
