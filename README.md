@@ -1,7 +1,7 @@
 hass-jetson-person-detection
 ===============
 
-# Python script for person detection for Nvidia's Jetson boards
+## Python scripts for person detection for Nvidia's Jetson boards integration with HomeAssistant through MQTT
 
 ## Features:
 * Detects persons in a video stream
@@ -16,7 +16,7 @@ hass-jetson-person-detection
 ```
 $ pip3 install ffmpeg-python numpy pillow paho-mqtt
 ```
-2. Setup an rtsp server such as rtsp-simple-server from https://github.com/aler9/rtsp-simple-server
+2. if using single camera and want an rtsp re-stream, setup an rtsp server such as rtsp-simple-server from https://github.com/aler9/rtsp-simple-server
 3. Rename rename_to_config.py to config.py
 4. Edit the config.py to adjust it to your setup
 5. Make sure to have a MQTT broker installed with Home Assistant (i.e. Mosquito MQTT Broker)
