@@ -67,7 +67,7 @@ class VideoDetector:
         if person_detected:
             with io.BytesIO() as output:
                 array_frame.save(output, format="PNG")
-                self.pm.publish_last_person_camera(output.getvalue())
+                self.pm.last_person_camera(output.getvalue())
 
             if self.snap_save:
                 array_frame.save("captures/{}".format(
@@ -109,8 +109,8 @@ class VideoDetector:
                     self.pm.publish_binary_sensor_status("on")
                     persons_detected += 1
 
-            self.pm.publish_persons_detected(persons_detected)
-            self.pm.publish_binary_sensor_status("on" if persons_detected > 0 else "off")
+            self.pm.persons_detected(persons_detected)
+            self.pm.binary_sensor_status("on" if persons_detected > 0 else "off")
             
             self.record_video(img, persons_detected > 0, video_started)
             self.process_frame(img, persons_detected > 0)

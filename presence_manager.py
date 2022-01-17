@@ -18,11 +18,16 @@ class PresenceManager:
 
         last_camera = config["mqtt_payload_sensor_last_person_camera"].copy()
         last_camera["topic"] = "{}_last_person".format(last_camera["topic"])
-        self.client.publish(config["mqtt_topic_last_person_camera"], json.dumps(last_camera), retain=True)
+        self.client.publish(
+            config["mqtt_topic_last_person_camera"], json.dumps(last_camera), retain=True)
+
+        self.client.publish(config["mqtt_topic_last_time_detected"], json.dumps(
+            config["mqtt_payload_last_time_detected"]))
 
         self.client.publish("kikkei/occupancy/sensor/cameras_active", "on")
-        
+
         self.client.publish("kikkei/occupancy/sensor/persons", 0)
+        self.client.publish("kikkei/occupancy/sensor/status", "off")
 
         if self.detector != None:
             for source in self.detector.sources:
@@ -54,17 +59,20 @@ class PresenceManager:
     def on_message(self, client, userdata, msg):
         pass
 
-    def publish_persons_detected(self, persons):
+    def persons_detected(self, persons):
         if self.prev_persons != persons:
             self.client.publish("kikkei/occupancy/sensor/persons", persons)
             self.prev_persons = persons
 
-    def publish_binary_sensor_status(self, status):
+    def binary_sensor_status(self, status):
         if self.prev_status != status:
             self.client.publish("kikkei/occupancy/sensor/status", status)
             self.prev_status = status
 
-    def publish_last_person_camera(self, snap):
+    def last_time_detected(self, time):
+        self.client.publish("kikkei/occupancy/sensor/last_time_detected", time)
+
+    def last_person_camera(self, snap):
         self.client.publish("kikkei/occupancy/sensor/camera_last_person", snap)
 
     def cameras_active(self, active):
