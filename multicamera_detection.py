@@ -8,8 +8,11 @@ from timeit import default_timer as timer
 from presence_manager import PresenceManager
 from custom_timer import Timer
 from video_recorder import VideoRecorder
+from net_detector import NetDetector
 import io
 import logging
+
+DETECTOR_CLASS = "person"
 
 class MultiVideoDetector:
 
@@ -29,19 +32,24 @@ class MultiVideoDetector:
 
         self.sources = []
         for i in config["sources"]:
+            input_source_created = True
+            try:
+                input_source =  jetson.utils.videoSource(i["url"])
+            except Exception as e:
+                input_source_created = False
+
             source = {
-                "input": jetson.utils.videoSource(i["url"]),
+                "input": input_source,
                 "name": i["name"],
                 "url": i["url"],
-                "active": True
+                "active": input_source_created
             }
             self.sources.append(source)
 
         self.pm = PresenceManager()
         self.pm.detector = self
 
-        self.net = jetson.inference.detectNet(
-            config["model"], threshold=config["threshold"])
+        self.net = NetDetector()
 
         self.dt = 0
         self.elapsed = 0
@@ -52,6 +60,7 @@ class MultiVideoDetector:
             timer.active = False
 
         self.video_recorder = VideoRecorder(config["snap_video_duration"])
+        self.video_recorder.logger = self.logger
 
     def get_timer(self):
         for timer in self.timer_pool:
@@ -63,14 +72,15 @@ class MultiVideoDetector:
     def on_timer(self,timer,elapsed):
         try:
             timer.payload["input"] = jetson.utils.videoSource(timer.payload["url"])
+            self.logger.error("SOURCE COULD NOT BE REACTIVATED")
         except Exception as e:
             return
         timer.payload["active"] = True
         self.logger.info("SOURCE WAS REACTIVATED")
 
-    def process_frame(self, name, img, person_detected):
+    def process_frame(self, name, frame, person_detected):
 
-        image_array = jetson.utils.cudaToNumpy(img)
+        image_array = self.net.copy_frame_to_cpu(frame)
         array_frame = Image.fromarray(image_array, "RGB")
 
         if person_detected:
@@ -111,22 +121,22 @@ class MultiVideoDetector:
                 continue
 
             try:
-                img = source["input"].Capture()
+                frame = source["input"].Capture()
             except Exception as e:
                 self.logger.error("Source failed!!!")
                 source["active"] = False
                 continue
 
-            detections = self.net.Detect(img, overlay="box,labels,conf")
+            detections = self.net.detect(frame)
             for detection in detections:
-                if self.net.GetClassDesc(detection.ClassID) == "person":
+                if self.net.get_detection_name(detection) == DETECTOR_CLASS:
                     persons_detected += 1
 
-            self.process_frame(source["name"], img, persons_detected > 0)
+            self.process_frame(source["name"], frame, persons_detected > 0)
 
             if persons_detected > 0 and self.video_record:
                 self.logger.info("Time to record video!")
-                self.video_recorder.start(source["name"], source["input"], img)
+                self.video_recorder.start(source["name"], source["input"], frame)
 
             if not source["input"].IsStreaming():
                 source["active"] = False

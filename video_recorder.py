@@ -7,6 +7,7 @@ class VideoRecorder:
     def __init__(self, duration):
         self.video_is_recording = False
         self.timer = Timer(duration, self)
+        self.logger = None
 
     def start(self, camera, input_source, img):
         if not self.video_is_recording:
@@ -26,3 +27,5 @@ class VideoRecorder:
     def on_timer(self, timer, elapsed):
         self.output.Close()
         self.video_is_recording = False
+        if self.logger != None:
+            self.logger.info("Video reccording stopped")
