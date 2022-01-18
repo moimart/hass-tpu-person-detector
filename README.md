@@ -1,12 +1,26 @@
 hass-tpu-person-detection
 ===============
 
-## Python scripts for person detection for Nvidia's Jetson boards (soon Google's Coral EDGE TPU) integration with HomeAssistant through MQTT
+### Python program for person detection for Nvidia's Jetson boards (soon Google's Coral EDGE TPU) integration with HomeAssistant through MQTT
 
 ## Features:
-* Detects persons in a video stream
-* Publishes ffmpeg rtsp stream with detections (RTSP server needed -- check rtsp-simple-server)
-* Creates Home Assistant occupancy sensor with mqtt based on detection
+* Detects persons in several video streams as a single sensor. Perfect for exterior setups as it is simplified in one detection device
+* Creates a device in Home Assistant through MQTT that publishes:
+    - Cameras sources are active
+    - Last snapshot of detected class (person) per camera
+    - Binary Occupancy sensor
+    - Number of persons sensor
+    - Last time of detection
+* Takes snapshots when detection occurs as PNGs with detections
+* Takes video files after detection occurs
+
+## TODO:
+* Coral EDGE TPU implementation
+* Selection of classes to track (not just person)
+* Auto-upload of snapshots and videos
+* Docker image
+* Multiple instances (in order to have multiple Home Assistant's devices)
+* Expose labelling data for network training of detections
 
 ## Usage:
 
@@ -26,9 +40,5 @@ $ pip3 install ffmpeg-python numpy pillow paho-mqtt
 ```
 $ python3 multicamera_detection.py # for multiple cameras (setting sources in config) without rtsp re-stream
 ```
-TODO:
-- Coral EDGE TPU implementation
-- Selection of classes to track (not just person)
-- Auto-upload of snapshots and videos
-- Docker image
+
 
