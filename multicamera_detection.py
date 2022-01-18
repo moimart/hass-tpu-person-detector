@@ -58,13 +58,13 @@ class MultiVideoDetector:
         self.elapsed = 0
         self.processing_gap = config["processing_gap"]
 
-        self.timer_pool = [Timer(120, self) for _ in range(5)]
+        self.timer_pool = [Timer(120, self) for _ in range(1)]
         for timer in self.timer_pool:
             timer.active = False
 
         self.video_recorder = VideoRecorder(config["snap_video_duration"])
         self.video_recorder.logger = self.logger
-        
+
     def get_timer(self):
         for timer in self.timer_pool:
             if not timer.active:
@@ -77,10 +77,12 @@ class MultiVideoDetector:
             timer.payload["input"] = jetson.utils.videoSource(
                 timer.payload["url"])
         except Exception as e:
-            self.logger.error("SOURCE COULD NOT BE REACTIVATED")
+            self.logger.error(
+                "SOURCE {} COULD NOT BE REACTIVATED".format(timer.payload["name"]))
             return
         timer.payload["active"] = True
-        self.logger.info("SOURCE WAS REACTIVATED")
+        self.logger.info(
+            "SOURCE {} WAS REACTIVATED".format(timer.payload["name"]))
         timer.name = ""
 
     def process_frame(self, name, frame, person_detected):
@@ -116,18 +118,18 @@ class MultiVideoDetector:
         for source in self.sources:
             cameras_active = cameras_active or source["active"]
             if not source["active"]:
-                #timer = self.get_timer()
-                #if timer != None and timer.name != source["name"]:
-                #    timer.payload = source
-                #    timer.name = source["name"]
-                #    timer.reset()
-                #    timer.active = True
+                timer = self.get_timer()
+                if timer != None and timer.name != source["name"]:
+                    timer.payload = source
+                    timer.name = source["name"]
+                    timer.reset()
+                    timer.active = True
                 continue
 
             try:
                 frame = source["input"].Capture()
             except Exception as e:
-                self.logger.error("SOURCE FAILED!!!")
+                self.logger.error("SOURCE {} FAILED!!!".format(source["name"]))
                 source["active"] = False
                 continue
 
@@ -139,7 +141,6 @@ class MultiVideoDetector:
             self.process_frame(source["name"], frame, persons_detected > 0)
 
             if persons_detected > 0 and self.video_record:
-                self.logger.info("Time to record video!")
                 self.video_recorder.start(
                     source["name"], source["url"])
 
@@ -165,6 +166,7 @@ class MultiVideoDetector:
             t1 = timer()
 
             self.dt = t1 - t0
+
 
 if __name__ == "__main__":
     vd = MultiVideoDetector()

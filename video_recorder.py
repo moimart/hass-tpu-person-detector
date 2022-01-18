@@ -27,6 +27,9 @@ class VideoRecorder:
                     .overwrite_output()
                     .run_async()
             )
+            self.logger.info("Video recording started")
+        else:
+            self.logger.info("Another video is being recorded")
 
     def step(self, dt):
         if self.video_is_recording:
