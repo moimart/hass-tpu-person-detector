@@ -5,11 +5,13 @@ class Timer:
         self.elapsed = 0
         self.active = True
         self.payload = None
+        self.name = ""
 
     def step(self, dt):
         self.elapsed += dt
         if self.elapsed >= self.time:
-            self.delegate.on_timer(self, self.elapsed)
+            if self.active:
+                self.delegate.on_timer(self, self.elapsed)
             self.elapsed = 0
             self.active = False
 

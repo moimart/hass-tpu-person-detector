@@ -11,11 +11,13 @@ from video_recorder import VideoRecorder
 from net_detector import NetDetector
 import io
 import logging
+from multiprocessing import Process
+import os
 
 DETECTOR_CLASS = "person"
 
-class MultiVideoDetector:
 
+class MultiVideoDetector:
     def __init__(self):
         logging.basicConfig(filename="kikkei-detector.log",
                             filemode='a',
@@ -32,9 +34,10 @@ class MultiVideoDetector:
 
         self.sources = []
         for i in config["sources"]:
+            input_source = None
             input_source_created = True
             try:
-                input_source =  jetson.utils.videoSource(i["url"])
+                input_source = jetson.utils.videoSource(i["url"])
             except Exception as e:
                 input_source_created = False
 
@@ -55,13 +58,13 @@ class MultiVideoDetector:
         self.elapsed = 0
         self.processing_gap = config["processing_gap"]
 
-        self.timer_pool = [Timer(30, self) for _ in range(5)]
+        self.timer_pool = [Timer(120, self) for _ in range(5)]
         for timer in self.timer_pool:
             timer.active = False
 
         self.video_recorder = VideoRecorder(config["snap_video_duration"])
         self.video_recorder.logger = self.logger
-
+        
     def get_timer(self):
         for timer in self.timer_pool:
             if not timer.active:
@@ -69,17 +72,18 @@ class MultiVideoDetector:
 
         return None
 
-    def on_timer(self,timer,elapsed):
+    def on_timer(self, timer, elapsed):
         try:
-            timer.payload["input"] = jetson.utils.videoSource(timer.payload["url"])
-            self.logger.error("SOURCE COULD NOT BE REACTIVATED")
+            timer.payload["input"] = jetson.utils.videoSource(
+                timer.payload["url"])
         except Exception as e:
+            self.logger.error("SOURCE COULD NOT BE REACTIVATED")
             return
         timer.payload["active"] = True
         self.logger.info("SOURCE WAS REACTIVATED")
+        timer.name = ""
 
     def process_frame(self, name, frame, person_detected):
-
         image_array = self.net.copy_frame_to_cpu(frame)
         array_frame = Image.fromarray(image_array, "RGB")
 
@@ -90,22 +94,21 @@ class MultiVideoDetector:
                 self.pm.update_camera(name, output.getvalue())
 
             if self.snap_save:
-                array_frame.save("captures/{}-{}.png".format(
-                    strftime(TIME_FORMAT_STR, gmtime()), name), "PNG")
+                array_frame.save(
+                    "captures/{}-{}.png".format(strftime(TIME_FORMAT_STR, gmtime()), name), "PNG")
 
     def loop(self):
         self.elapsed += self.dt
 
         for timer in self.timer_pool:
-           timer.step(self.dt)
+            timer.step(self.dt)
 
         self.video_recorder.step(self.dt)
 
         if self.elapsed < self.processing_gap:
             return
-        if self.elapsed > self.processing_gap*2:
+        if self.elapsed >= self.processing_gap*2:
             self.elapsed = 0
-            return
 
         persons_detected = 0
         cameras_active = False
@@ -113,17 +116,18 @@ class MultiVideoDetector:
         for source in self.sources:
             cameras_active = cameras_active or source["active"]
             if not source["active"]:
-                timer = self.get_timer()
-                if timer != None:
-                    timer.payload = source
-                    timer.reset()
-                    timer.active = True
+                #timer = self.get_timer()
+                #if timer != None and timer.name != source["name"]:
+                #    timer.payload = source
+                #    timer.name = source["name"]
+                #    timer.reset()
+                #    timer.active = True
                 continue
 
             try:
                 frame = source["input"].Capture()
             except Exception as e:
-                self.logger.error("Source failed!!!")
+                self.logger.error("SOURCE FAILED!!!")
                 source["active"] = False
                 continue
 
@@ -136,7 +140,8 @@ class MultiVideoDetector:
 
             if persons_detected > 0 and self.video_record:
                 self.logger.info("Time to record video!")
-                self.video_recorder.start(source["name"], source["input"], frame)
+                self.video_recorder.start(
+                    source["name"], source["url"])
 
             if not source["input"].IsStreaming():
                 source["active"] = False
@@ -146,7 +151,8 @@ class MultiVideoDetector:
         self.pm.cameras_active(cameras_active)
 
         if persons_detected > 0:
-            self.pm.last_time_detected("{}".format(strftime('%A %B %-d, %I:%M %p', gmtime())))
+            self.pm.last_time_detected("{}".format(
+                strftime('%A %B %-d, %I:%M %p', gmtime())))
 
         if not cameras_active:
             self.logger.error("NO CAMERA SOURCES ARE ACTIVE")
@@ -159,7 +165,6 @@ class MultiVideoDetector:
             t1 = timer()
 
             self.dt = t1 - t0
-
 
 if __name__ == "__main__":
     vd = MultiVideoDetector()

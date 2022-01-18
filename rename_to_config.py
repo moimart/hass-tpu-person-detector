@@ -1,6 +1,7 @@
 import os
 #from dotenv import load_dotenv
 # load_dotenv()
+TIME_FORMAT_STR = "%Y%m%d%H%M%S"
 
 device = {
     "identifiers": ["Kikkei Labs Person Detector"],
@@ -12,7 +13,7 @@ device = {
 config = {
     "codec": "h264_nvmpi",
     "model": "ssd-mobilenet-v2",
-    "threshold": 0.5,
+    "threshold": 0.56,
     "source":  "rtsp://1.2.3.4",
     "sources": [
         {
@@ -21,13 +22,15 @@ config = {
         },
         {
             "name": "Entrance",
-            "url": "rtsp://1.2.4.5."
+            "url": "rtsp://1.2.3.5"
         }
     ],
     "output": "",  # "rtsp://localhost:8554/mystream",
+    "snap_video_duration": 20,
+    "processing_gap": 1, 
     "hass_username": "homeassistant",
     "hass_pwd": "",
-    "mqtt_host": "1.2.3.6",
+    "mqtt_host": "1.2.3.4.6",
     "mqtt_port": 1883,
     "mqtt_topic": "homeassistant/binary_sensor/kikkei/jetson_presence/config",
     "mqtt_payload": {
@@ -70,6 +73,18 @@ config = {
         "state_topic": "kikkei/occupancy/sensor/cameras_active",
         "name": "Cameras Active",
         "unique_id": "garden_presence_cameras_active",
+        "payload_on": "on",
+        "payload_off": "off",
+        "payload_available": "ON",
+        "payload_not_available": "OFF",
+        "device": device
+    },
+    "mqtt_topic_last_time_detected": "homeassistant/sensor/kikkei/last_time_detected/config",
+    "mqtt_payload_last_time_detected": {
+        "availability_topic": "kikkei/occupancy/jetson",
+        "topic": "kikkei/occupancy/sensor/last_time_detected",
+        "name": "Last time detected",
+        "unique_id": "garden_presence_last_time_detected",
         "payload_on": "on",
         "payload_off": "off",
         "payload_available": "ON",

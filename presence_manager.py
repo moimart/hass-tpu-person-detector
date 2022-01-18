@@ -22,7 +22,7 @@ class PresenceManager:
             config["mqtt_topic_last_person_camera"], json.dumps(last_camera), retain=True)
 
         self.client.publish(config["mqtt_topic_last_time_detected"], json.dumps(
-            config["mqtt_payload_last_time_detected"]))
+            config["mqtt_payload_last_time_detected"]), retain=True)
 
         self.client.publish("kikkei/occupancy/sensor/cameras_active", "on")
 
