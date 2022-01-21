@@ -139,7 +139,7 @@ class MultiVideoDetector:
                     camera_detection = True
 
             if camera_detection:
-                self.process_frame(source["name"], frame, camera_detection)
+                self.process_frame(source["name"], frame)
 
             if persons_detected > 0 and self.video_record:
                 self.video_recorders[source["name"]].start(
