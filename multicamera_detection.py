@@ -16,7 +16,6 @@ import os
 
 DETECTOR_CLASS = "person"
 
-
 class MultiVideoDetector:
     def __init__(self):
         logging.basicConfig(filename="kikkei-detector.log",
@@ -84,19 +83,18 @@ class MultiVideoDetector:
         self.logger.info(
             "SOURCE {} WAS REACTIVATED".format(timer.payload["name"]))
 
-    def process_frame(self, name, frame, person_detected):
+    def process_frame(self, name, frame):
         image_array = self.net.copy_frame_to_cpu(frame)
         array_frame = Image.fromarray(image_array, "RGB")
 
-        if person_detected:
-            with io.BytesIO() as output:
-                array_frame.save(output, format="PNG")
-                self.pm.last_person_camera(output.getvalue())
-                self.pm.update_camera(name, output.getvalue())
+        with io.BytesIO() as output:
+            array_frame.save(output, format="PNG")
+            self.pm.last_person_camera(output.getvalue())
+            self.pm.update_camera(name, output.getvalue())
 
-            if self.snap_save:
-                array_frame.save(
-                    "captures/{}-{}.png".format(strftime(TIME_FORMAT_STR, gmtime()), name), "PNG")
+        if self.snap_save:
+            array_frame.save(
+                "captures/{}-{}.png".format(strftime(TIME_FORMAT_STR, gmtime()), name), "PNG")
 
     def loop(self):
         self.elapsed += self.dt
@@ -139,7 +137,8 @@ class MultiVideoDetector:
                     persons_detected += 1
                     camera_detection = True
 
-            self.process_frame(source["name"], frame, camera_detection)
+            if camera_detection:
+                self.process_frame(source["name"], frame, camera_detection)
 
             if persons_detected > 0 and self.video_record:
                 self.video_recorders[source["name"]].start(
