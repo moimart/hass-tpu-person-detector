@@ -28,6 +28,7 @@ class MultiVideoDetector:
         self.logger = logging.getLogger('person-detector')
         self.logger.info("Video detector started")
 
+        self.video_recorders = {}
         self.video_record = False if config["snap_video_duration"] == 0 else True
         self.snap_save = True
 
@@ -47,9 +48,9 @@ class MultiVideoDetector:
                 "active": input_source_created
             }
             self.sources.append(source)
-            self.video_recorders[source] = VideoRecorder(
-                config["snap_video_duration"])
-            self.video_recorders[source].logger = self.logger
+            self.video_recorders.update({ i["name"] : VideoRecorder(
+                config["snap_video_duration"]) })
+            self.video_recorders[i["name"]].logger = self.logger
 
         self.pm = PresenceManager()
         self.pm.detector = self
