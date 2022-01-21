@@ -48,6 +48,9 @@ class MultiVideoDetector:
                 "active": input_source_created
             }
             self.sources.append(source)
+            self.video_recorders[source] = VideoRecorder(
+                config["snap_video_duration"])
+            self.video_recorders[source].logger = self.logger
 
         self.pm = PresenceManager()
         self.pm.detector = self
@@ -61,9 +64,6 @@ class MultiVideoDetector:
         self.timer_pool = [Timer(120, self) for _ in range(1)]
         for timer in self.timer_pool:
             timer.active = False
-
-        self.video_recorder = VideoRecorder(config["snap_video_duration"])
-        self.video_recorder.logger = self.logger
 
     def get_timer(self):
         for timer in self.timer_pool:
@@ -83,7 +83,6 @@ class MultiVideoDetector:
         timer.payload["active"] = True
         self.logger.info(
             "SOURCE {} WAS REACTIVATED".format(timer.payload["name"]))
-        timer.name = ""
 
     def process_frame(self, name, frame, person_detected):
         image_array = self.net.copy_frame_to_cpu(frame)
@@ -102,10 +101,8 @@ class MultiVideoDetector:
     def loop(self):
         self.elapsed += self.dt
 
-        for timer in self.timer_pool:
-            timer.step(self.dt)
-
-        self.video_recorder.step(self.dt)
+        for video_recorder in self.video_recorders.values():
+            video_recorder.step(self.dt)
 
         if self.elapsed < self.processing_gap:
             return
@@ -124,6 +121,8 @@ class MultiVideoDetector:
                     timer.name = source["name"]
                     timer.reset()
                     timer.active = True
+                    self.logger.info(
+                        "Trying reactivation of source {}".format(source["name"]))
                 continue
 
             try:
@@ -133,15 +132,17 @@ class MultiVideoDetector:
                 source["active"] = False
                 continue
 
+            camera_detection = False
             detections = self.net.detect(frame)
             for detection in detections:
                 if self.net.get_detection_name(detection) == DETECTOR_CLASS:
                     persons_detected += 1
+                    camera_detection = True
 
-            self.process_frame(source["name"], frame, persons_detected > 0)
+            self.process_frame(source["name"], frame, camera_detection)
 
             if persons_detected > 0 and self.video_record:
-                self.video_recorder.start(
+                self.video_recorders[source["name"]].start(
                     source["name"], source["url"])
 
             if not source["input"].IsStreaming():
@@ -157,6 +158,9 @@ class MultiVideoDetector:
 
         if not cameras_active:
             self.logger.error("NO CAMERA SOURCES ARE ACTIVE")
+
+        for timer in self.timer_pool:
+            timer.step(self.dt)
 
     def start(self):
         while True:

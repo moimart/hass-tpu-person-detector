@@ -36,7 +36,9 @@ class VideoRecorder:
             self.timer.step(dt)
 
     def on_timer(self, timer, elapsed):
+        self.timer.active = False
         self.video_is_recording = False
         if self.logger != None:
             self.logger.info("Video reccording stopped")
-        self.p.wait()
+        
+        #self.p.wait()

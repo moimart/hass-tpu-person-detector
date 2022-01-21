@@ -8,10 +8,11 @@ class Timer:
         self.name = ""
 
     def step(self, dt):
+        if not self.active:
+            return
         self.elapsed += dt
         if self.elapsed >= self.time:
-            if self.active:
-                self.delegate.on_timer(self, self.elapsed)
+            self.delegate.on_timer(self, self.elapsed)
             self.elapsed = 0
             self.active = False
 
