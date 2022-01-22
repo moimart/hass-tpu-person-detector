@@ -32,13 +32,11 @@ class VideoRecorder:
             self.logger.info("Another video is being recorded")
 
     def step(self, dt):
-        if self.video_is_recording:
-            self.timer.step(dt)
+        self.timer.step(dt)
 
     def on_timer(self, timer, elapsed):
-        self.timer.active = False
         self.video_is_recording = False
         if self.logger != None:
-            self.logger.info("Video reccording stopped")
+            self.logger.info("Video reccording stopped. Timer stopped at {}".format(elapsed))
         
         #self.p.wait()
